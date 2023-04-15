@@ -636,15 +636,6 @@ function playGame () {
     stroke("#013993");
 
 
-    if(!announcedFirstEar) {
-        switchEar();
-        announcedFirstEar = enums.TRUE;
-    }
-
-    runInterval(earSwapInterval, function() {
-        switchEar();
-    });
-
     if(keyCode == BACKSPACE) {
         keyCode = DELETE;
 
@@ -660,7 +651,18 @@ function playGame () {
 
 
     if(audioCues == enums.TRUE) {
-        runInterval(2, function() {
+
+        if(!announcedFirstEar) {
+            switchEar();
+            announcedFirstEar = enums.TRUE;
+        }
+
+        runInterval(earSwapInterval, function() {
+            switchEar();
+        });
+
+
+        runInterval(cueInterval, function() {
             let rightCue = randomSound(rightEarSounds);
             let leftCue = randomSound(leftEarSounds);
 
