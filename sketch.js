@@ -98,6 +98,10 @@ let earSwapInterval = 10;
 //Interval(in seconds) of how often to play a cue
 let cueInterval = 5;
 
+let reactionTime = 1;
+
+let isCuePlaying = false;
+
 //Stores the number of frames since clicking play
 let playTimeFrames = 0;
 
@@ -269,11 +273,21 @@ function mouseClicked () {
         }
     }
     if(menuOption == enums.menu.SETTINGS_1) {
-        if(mouseX > windowWidth - 210 && mouseX < windowWidth + 210) {
-            if(mouseY > windowHeight / 2 - 340 && mouseY < windowHeight / 2 - 265) {
+
+        let buttonWidth = 200;
+        let buttonHeight = 75;
+        let buttonX = windowWidth - buttonWidth - 10;
+        let buttonY = 10;
+
+        if(mouseX > buttonX && mouseX < buttonX + buttonWidth) {
+            if(mouseY > buttonY && mouseY < buttonY + buttonHeight) {
                 menuOption = enums.menu.SETTINGS_2;
             }
         }
+
+
+
+
     }
 
 }
@@ -334,40 +348,66 @@ function settingsMenu () {
     exitPointerLock();
     cursor();
     fill('black');
-    rect(windowWidth - 210, windowHeight - (windowHeight - 10), 200, 75);
 
-    if(mouseX > windowWidth - 210 && mouseX < windowWidth + 210) {
+    rect(windowWidth - 210, 10, 200, 75);
+
+    /*if(mouseX > windowWidth - 210 && mouseX < windowWidth + 210) {
         if(mouseY > windowHeight / 2 - 340 && mouseY < windowHeight / 2 - 265) {
             fill('#e4ac00');
             rect(windowWidth - 210, windowHeight - (windowHeight - 10), 200, 75);
         }
+    }*/
+
+    let buttonWidth = 200;
+    let buttonHeight = 75;
+    let buttonX = windowWidth - buttonWidth - 10;
+    let buttonY = 10;
+
+    if(mouseX > buttonX && mouseX < buttonX + buttonWidth) {
+        if(mouseY > buttonY && mouseY < buttonY + buttonHeight) {
+            fill('#e4ac00');
+            rect(buttonX, buttonY, buttonWidth, buttonHeight);
+        }
     }
+
+
 
     fill('#e4ac00');
     textSize(50 - 15);
     text('MORE', windowWidth - 110, windowHeight - (windowHeight - 60));
 
     ingame = false;
+    let sliderWidth = 200;
+    let sliderX = windowWidth / 2 - sliderWidth / 2;
     if(haveInitSetting == 0) {
         throtSlider = createSlider(5, 15, vThrottleMax);
-        throtSlider.position(windowWidth / 2 - 100, 130);
-        throtSlider.size(200);
+        throtSlider.position(sliderX, 130);
+        throtSlider.size(sliderWidth);
+
         targetSlider = createSlider(5, 15, vTargetMax);
-        targetSlider.position(windowWidth / 2 - 100, 230);
-        targetSlider.size(200);
+        targetSlider.position(sliderX, 230);
+        targetSlider.size(sliderWidth);
+
         timerSlider = createSlider(1, 300, timer);
-        timerSlider.position(windowWidth / 2 - 100, 330);
-        timerSlider.size(200);
+        timerSlider.position(sliderX, 330);
+        timerSlider.size(sliderWidth);
 
         audioSlider = createSlider(enums.FALSE, enums.TRUE, audioCues);
-        audioSlider.position(windowWidth / 2 - 100, 430);
-        audioSlider.size(200);
+        audioSlider.position(sliderX, 430);
+        audioSlider.size(sliderWidth);
 
         musicSlider = createSlider(0, 1, musicToggle);
-        musicSlider.position(windowWidth / 2 - 100, 530);
-        musicSlider.size(200);
+        musicSlider.position(sliderX, 530);
+        musicSlider.size(sliderWidth);
 
         haveInitSetting = 1;
+    }
+    if(haveInitSetting) {
+        throtSlider.position(sliderX, 130);
+        targetSlider.position(sliderX, 230);
+        timerSlider.position(sliderX, 330);
+        audioSlider.position(sliderX, 430);
+        musicSlider.position(sliderX, 530);
     }
     timer = timerSlider.value();
     timeBuffer = timer;
@@ -425,6 +465,7 @@ function settingsMenu () {
         menuSound.stop();
     }
 
+
     if(keyCode == BACKSPACE) {
         keyCode = DELETE;
 
@@ -448,28 +489,41 @@ function settingsMenu2 () {
     musicSlider.remove();
     ingame = false;
 
+    let sliderWidth = 200;
+    let sliderX = windowWidth / 2 - sliderWidth / 2;
     if(haveInitSetting == 1) {
         //Slider for changing time between ear swap
-        earSwapSlider = createSlider(1, 30, earSwapInterval);
-        earSwapSlider.position(windowWidth / 2 - 100, 130);
-        earSwapSlider.size(200);
+        earSwapSlider = createSlider(5, 30, earSwapInterval);
+        earSwapSlider.position(sliderX, 130);
+        earSwapSlider.size(sliderWidth);
 
-        //Slider for changing the interval at which cues will play
-        cueIntervalSlider = createSlider(5, 15, cueInterval);
-        cueIntervalSlider.position(windowWidth / 2 - 100, 230);
-        cueIntervalSlider.size(200);
+        //Slider for changing the interval at which cue sets will play
+        cueIntervalSlider = createSlider(3, 15, cueInterval);
+        cueIntervalSlider.position(sliderX, 230);
+        cueIntervalSlider.size(sliderWidth);
+
+        //Slider for changing the reaction time for a cue
+        reactionTimeSlider = createSlider(0.1, 2.5, reactionTime, 0.1);
+        reactionTimeSlider.position(sliderX, 330);
+        reactionTimeSlider.size(sliderWidth);
 
         //Slider for toggling debug text on/off
         debugSlider = createSlider(enums.FALSE, enums.TRUE, debugToggle);
-        debugSlider.position(windowWidth / 2 - 100, 330);
+        debugSlider.position(65, 130);
         debugSlider.size(200);
 
         haveInitSetting = 2;
+    }
+    if(haveInitSetting == 2) {
+        earSwapSlider.position(sliderX, 130);
+        cueIntervalSlider.position(sliderX, 230);
+        reactionTimeSlider.position(sliderX, 330);
     }
 
     earSwapInterval = earSwapSlider.value();
     debugToggle = debugSlider.value();
     cueInterval = cueIntervalSlider.value();
+    reactionTime = reactionTimeSlider.value();
 
     fill('#e4ac00');
     textSize(18);
@@ -479,13 +533,17 @@ function settingsMenu2 () {
     text("Interval:", windowWidth / 2 - 150, 145);
     text(earSwapInterval + " seconds", windowWidth / 2 + 185, 145);
 
-    //Cue interval
+    //Cue set interval
     text("Interval:", windowWidth / 2 - 150, 245);
     text(cueInterval + " seconds", windowWidth / 2 + 185, 245);
 
+    //Reaction time
+    text("Time:", windowWidth / 2 - 150, 345);
+    text(reactionTime + " seconds", windowWidth / 2 + 185, 345);
+
     //Debug toggle
-    text("Off", windowWidth / 2 - 150, 345);
-    text("on", windowWidth / 2 + 185, 345);
+    text("Off", 45, 145);
+    text("On", 290, 145);
 
     textSize(25);
     textAlign(CENTER);
@@ -495,10 +553,12 @@ function settingsMenu2 () {
     textSize(35);
     text("Interval to swap ears", windowWidth / 2, 100);
 
-    text("Interval to play cues", windowWidth / 2, 200);
+    text("Interval to play cue set(2 cues)", windowWidth / 2, 200);
+
+    text("Cue reaction time", windowWidth / 2, 300);
 
     textSize(35);
-    text("Toggle Debug Text", windowWidth / 2, 300);
+    text("Toggle Debug Text", 165, 100);
 
     fill('#e4ac00');
     textSize(25);
@@ -511,6 +571,7 @@ function settingsMenu2 () {
         earSwapSlider.remove();
         debugSlider.remove();
         cueIntervalSlider.remove();
+        reactionTimeSlider.remove();
         clear();
         menuOption = enums.menu.SETTINGS_1;
         haveInitSetting = 0;
@@ -608,7 +669,7 @@ function randomSound (array) {
 
 function runInterval (seconds, func) {
     if(playTimeFrames % (seconds * 60) === 0) {
-        func();
+        func(0);
     }
 }
 
@@ -658,14 +719,27 @@ function playGame () {
         }
 
         runInterval(earSwapInterval, function() {
-            switchEar();
+            setTimeout(() => {
+                if(!isCuePlaying) {
+                    switchEar();
+                }
+                else {
+                    let checkCuePlaying = setInterval(() => {
+                        if(!isCuePlaying) {
+                            switchEar();
+                            clearInterval(checkCuePlaying);
+                        }
+                    }, 100);
+                }
+            }, 500);
         });
 
 
-        runInterval(cueInterval, function() {
+
+        let playCue = function(repeat = 0) {
+            isCuePlaying = true;
             let rightCue = randomSound(rightEarSounds);
             let leftCue = randomSound(leftEarSounds);
-
             //If odd number in right ear
             if(rightEarReactSounds.includes(rightCue) && cueEar == enums.ear.RIGHT) {
                 setTimeout(() => {
@@ -693,16 +767,55 @@ function playGame () {
                     }
                 }, 1000);
             }
-
-
-
             rightCue.play();
             leftCue.play();
             totalCues++;
-        });
+
+            setTimeout(() => {
+                let rightCue = randomSound(rightEarSounds);
+                let leftCue = randomSound(leftEarSounds);
+                //If odd number in right ear
+                if(rightEarReactSounds.includes(rightCue) && cueEar == enums.ear.RIGHT) {
+                    setTimeout(() => {
+                        if(lastInput === enums.input.MOUSE_R) {
+                            console.log("Hit");
+                            hitCues++;
+                            lastInput = "NONE";
+                        }
+                        else {
+                            console.log("Miss");
+                            missedCues++;
+                        }
+                    }, 1000);
+                }
+                else if(leftEarReactSounds.includes(leftCue) && cueEar == enums.ear.LEFT) {
+                    setTimeout(() => {
+                        if(lastInput === enums.input.MOUSE_L) {
+                            console.log("Hit");
+                            hitCues++;
+                            lastInput = "NONE";
+                        }
+                        else {
+                            console.log("Miss");
+                            missedCues++;
+                        }
+                    }, 1000);
+                }
+                rightCue.play();
+                leftCue.play();
+                totalCues++;
+
+                setTimeout(() => {
+                    isCuePlaying = false;
+                }, max(rightCue.duration(), leftCue.duration()) * 1000);
+
+            }, reactionTime * 1000);
+        };
 
 
 
+
+        runInterval(cueInterval, (repeat) => playCue(repeat));
 
     }
 
@@ -757,6 +870,7 @@ function playGame () {
         text(`Total Cues: ${totalCues}`, windowWidth - 25, 125);
         text(`Hit Cues: ${hitCues}`, windowWidth - 25, 150);
         text(`Missed Cues: ${missedCues}`, windowWidth - 25, 175);
+        text(`Cue Playing: ${isCuePlaying}`, windowWidth - 25, 200);
 
         fill('#e4ac00');
         textAlign(LEFT);
