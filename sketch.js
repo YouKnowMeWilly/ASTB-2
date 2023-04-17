@@ -809,7 +809,7 @@ function playGame () {
                     isCuePlaying = false;
                 }, max(rightCue.duration(), leftCue.duration()) * 1000);
 
-            }, reactionTime * 1000);
+            }, (reactionTime * 1000) + 1000);
         };
 
 
