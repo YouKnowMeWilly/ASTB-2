@@ -21,6 +21,7 @@ const enums = {
         l: 76,
         MOUSE_R: "MOUSE_right",
         MOUSE_L: "MOUSE_left",
+        E: 69,
         NONE: "NONE"
     }
 };
@@ -86,8 +87,9 @@ let ingame = false;
 let debugToggle = enums.TRUE;
 
 //Variable stores the key code of the last input the user entered
-let lastInput = 'NONE';
-let currentInput = "NONE";
+let lastInput = enums.input.NONE;
+let currentInput = enums.input.NONE;
+let expectedInput = enums.input.NONE;
 
 //Whether the game needs to announce the first ear to listen to
 let announcedFirstEar = enums.FALSE;
@@ -100,6 +102,8 @@ let cueInterval = 5;
 
 let reactionTime = 1;
 
+let cueTimer = 0;
+
 let isCuePlaying = false;
 
 //Stores the number of frames since clicking play
@@ -110,6 +114,9 @@ let totalCues = 0;
 let hitCues = 0;
 let missedCues = 0;
 let cueReactTimer = 0;
+
+let clearItems = [];
+let stopSounds = [];
 
 
 
@@ -202,6 +209,8 @@ function windowResized () {
 
 function startMenu () {
     totalCues = 0;
+    hitCues = 0;
+    missedCues = 0;
     playTimeFrames = 0;
     timer = timeBuffer;
     lastInput = 'NONE';
@@ -293,7 +302,6 @@ function mouseClicked () {
 }
 
 function gameOver () {
-    totalCues = 0;
     playTimeFrames = 0;
     lastInput = 'NONE';
     announcedFirstEar = false;
@@ -307,13 +315,13 @@ function gameOver () {
     text("Try to get your scores as low as possible", windowWidth / 2, windowHeight / 2 + 200);
     text("Press backspace to return to the menu", windowWidth / 2, windowHeight / 2 + 300);
     if(audioCues == enums.TRUE) {
-        text("You got " + cueCorrect + "/" + cueTotal + " cues correct", windowWidth / 2, windowHeight / 2 - 100);
+        text("You got " + hitCues + "/" + totalCues + " cues correct", windowWidth / 2, windowHeight / 2 - 100);
     }
     if(keyCode == BACKSPACE) {
         throtRunningAvg = 0;
         runningAvg = 0;
-        cueCorrect = 0;
-        cueTotal = 0;
+        hitCues = 0;
+        totalCues = 0;
         keyCode = DELETE;
         clear();
         menuOption = enums.menu.START;
@@ -655,7 +663,10 @@ function switchEar () {
     else if(cueEar == enums.ear.LEFT) {
         cueEar = enums.ear.RIGHT;
     }
-    earSwitchAlert[cueEar].play();
+    let changeSound = earSwitchAlert[cueEar];
+    stopSounds.push(changeSound);
+    changeSound.play();
+    return changeSound;
 }
 
 
@@ -664,6 +675,20 @@ function randomSound (array) {
     return array[randomIndex];
 }
 
+function clearAllIntervals () {
+    for(let intervalId in clearItems) {
+        clearInterval(clearItems[intervalId]);
+    }
+
+    clearItems = []; // Reset the global array to an empty array
+}
+function stopAllSounds () {
+    for(let soundId in stopSounds) {
+        stopSounds[soundId].stop();
+    }
+
+    stopSounds = []; // Reset the global array to an empty array
+}
 
 
 
@@ -684,6 +709,8 @@ function playGame () {
         throtRunningTotal = 0;
         samples = 0;
         timer = timeBuffer;
+        clearAllIntervals();
+        stopAllSounds();
         return;
     }
 
@@ -718,104 +745,123 @@ function playGame () {
             announcedFirstEar = enums.TRUE;
         }
 
-        runInterval(earSwapInterval, function() {
+        let earSwapTimer = runInterval(earSwapInterval, function() {
             setTimeout(() => {
                 if(!isCuePlaying) {
-                    switchEar();
+                    changeSound = switchEar();
                 }
                 else {
                     let checkCuePlaying = setInterval(() => {
                         if(!isCuePlaying) {
-                            switchEar();
+                            changeSound = switchEar();
                             clearInterval(checkCuePlaying);
                         }
                     }, 100);
+
+                    clearItems.push(checkCuePlaying);
                 }
             }, 500);
         });
 
+        clearItems.push(earSwapTimer);
 
 
-        let playCue = function(repeat = 0) {
-            isCuePlaying = true;
-            let rightCue = randomSound(rightEarSounds);
-            let leftCue = randomSound(leftEarSounds);
-            //If odd number in right ear
-            if(rightEarReactSounds.includes(rightCue) && cueEar == enums.ear.RIGHT) {
-                setTimeout(() => {
-                    if(lastInput === enums.input.MOUSE_R) {
-                        console.log("Hit");
-                        hitCues++;
-                        lastInput = "NONE";
-                    }
-                    else {
-                        console.log("Miss");
-                        missedCues++;
-                    }
-                }, 1000);
-            }
-            else if(leftEarReactSounds.includes(leftCue) && cueEar == enums.ear.LEFT) {
-                setTimeout(() => {
-                    if(lastInput === enums.input.MOUSE_L) {
-                        console.log("Hit");
-                        hitCues++;
-                        lastInput = "NONE";
-                    }
-                    else {
-                        console.log("Miss");
-                        missedCues++;
-                    }
-                }, 1000);
-            }
-            rightCue.play();
-            leftCue.play();
-            totalCues++;
 
-            setTimeout(() => {
+
+
+        let playCue = function() {
+            let runCue = function(repeat) {
+                if(repeat) {
+                    isCuePlaying = true;
+                }
+                let startTime = millis();
+                let endTime = startTime + (reactionTime * 1000);
+                isCuePlaying = true;
                 let rightCue = randomSound(rightEarSounds);
                 let leftCue = randomSound(leftEarSounds);
-                //If odd number in right ear
-                if(rightEarReactSounds.includes(rightCue) && cueEar == enums.ear.RIGHT) {
-                    setTimeout(() => {
-                        if(lastInput === enums.input.MOUSE_R) {
-                            console.log("Hit");
-                            hitCues++;
-                            lastInput = "NONE";
-                        }
-                        else {
-                            console.log("Miss");
-                            missedCues++;
-                        }
-                    }, 1000);
+
+                stopSounds.push(rightCue);
+                stopSounds.push(leftCue);
+
+
+                if(cueEar == enums.ear.RIGHT) {
+                    if(rightEarReactSounds.includes(rightCue)) {
+                        expectedInput = enums.input.MOUSE_R;
+                        totalCues++;
+                    }
+                    else {
+                        expectedInput = enums.input.NONE;
+                    }
                 }
-                else if(leftEarReactSounds.includes(leftCue) && cueEar == enums.ear.LEFT) {
-                    setTimeout(() => {
-                        if(lastInput === enums.input.MOUSE_L) {
-                            console.log("Hit");
-                            hitCues++;
-                            lastInput = "NONE";
-                        }
-                        else {
-                            console.log("Miss");
-                            missedCues++;
-                        }
-                    }, 1000);
+                else if(cueEar == enums.ear.LEFT) {
+                    if(leftEarReactSounds.includes(leftCue)) {
+                        expectedInput = "e";
+                        totalCues++;
+                    }
+                    else {
+                        expectedInput = enums.input.NONE;
+                    }
                 }
+
                 rightCue.play();
                 leftCue.play();
-                totalCues++;
 
-                setTimeout(() => {
-                    isCuePlaying = false;
-                }, max(rightCue.duration(), leftCue.duration()) * 1000);
 
-            }, (reactionTime * 1000) + 1000);
+
+                let cueTimerMaxValue = 60; // Change this variable to set maximum cueTimer value
+                let increment = cueTimerMaxValue / (reactionTime * 1000); // Increment per millisecond
+                cueTimer = cueTimerMaxValue; // Start cueTimer at maximum value
+
+                // Continuously update cueTimer based on elapsed time
+                let cueTimerUpdater = setInterval(function() {
+                    let elapsedTime = millis() - startTime;
+                    let cueTimerValue = cueTimerMaxValue - Math.round(increment * elapsedTime); // Subtract from maximum value
+                    cueTimer = Math.max(cueTimerValue, 0); // Cap cueTimer at 0
+
+
+                    if(expectedInput != enums.input.NONE) {
+                        if(expectedInput === currentInput) {
+                            clearInterval(cueTimerUpdater);
+                            hitCues++;
+                            cueTimer = 0;
+                        }
+                    }
+
+
+
+                    if(millis() >= endTime) {
+                        clearInterval(cueTimerUpdater); // Stop the interval
+                        cueTimer = 0;
+                        if(expectedInput != enums.input.NONE) {
+                            missedCues++;
+                        }
+                    }
+                }, 16);
+
+                clearItems.push(cueTimerUpdater);
+
+                let checkCueDone = setInterval(() => {
+                    if(millis() >= endTime) {
+                        if(repeat == 1) {
+                            runCue(0);
+                            clearInterval(checkCueDone);
+
+                        }
+                        else if(repeat == 0) {
+                            isCuePlaying = false;
+                            clearInterval(checkCueDone);
+                        }
+                    }
+                }, 16);
+
+                clearItems.push(checkCueDone);
+
+            };
+
+            runCue(1);
         };
 
-
-
-
-        runInterval(cueInterval, (repeat) => playCue(repeat));
+        runInterval(cueInterval, () => playCue());
 
     }
 
@@ -853,10 +899,10 @@ function playGame () {
         text(`Frame Count: ${playTimeFrames}`, windowWidth - 25, 25);
 
         //Current input
-        text(`Last Input: ${currentInput}`, windowWidth - 25, 50);
+        text(`Current Input: ${currentInput}`, windowWidth - 25, 50);
 
         //Last input
-        text(`Last Input: ${lastInput}`, windowWidth - 25, 75);
+        text(`Expected Input: ${expectedInput}`, windowWidth - 25, 75);
 
         //cue ear
         if(cueEar == enums.ear.RIGHT) {
@@ -870,7 +916,8 @@ function playGame () {
         text(`Total Cues: ${totalCues}`, windowWidth - 25, 125);
         text(`Hit Cues: ${hitCues}`, windowWidth - 25, 150);
         text(`Missed Cues: ${missedCues}`, windowWidth - 25, 175);
-        text(`Cue Playing: ${isCuePlaying}`, windowWidth - 25, 200);
+        text(`Reaction Timer: ${cueTimer}`, windowWidth - 25, 200);
+        text(`Cue Playing: ${isCuePlaying}`, windowWidth - 25, 225);
 
         fill('#e4ac00');
         textAlign(LEFT);
