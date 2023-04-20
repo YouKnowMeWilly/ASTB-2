@@ -842,6 +842,7 @@ function playGame () {
 
                 let checkCueDone = setInterval(() => {
                     if(millis() >= endTime) {
+                        expectedInput = enums.input.NONE;
                         if(repeat == 1) {
                             runCue(0);
                             clearInterval(checkCueDone);
