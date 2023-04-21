@@ -49,7 +49,7 @@ let throtRunningTotal = 0;
 let samples = 0;
 
 //Default game time
-let timer = 200;
+let timer = 60;
 let timeBuffer = timer;
 
 let ax = 0;
@@ -119,6 +119,21 @@ let clearItems = [];
 let stopSounds = [];
 
 
+let doEmergency = enums.FALSE;
+let isEmergency = enums.FALSE;
+let displayEmergencyTimer = enums.TRUE;
+
+let emergencies = ["fire", "engine", "propeller"];
+
+let emergencyResolutionTime = 10;
+
+let engineValue = 50;
+let fuelValue = 100;
+
+let canAdjustValues = enums.FALSE;
+
+let upPressed = false;
+let downPressed = false;
 
 
 function preload () {
@@ -141,7 +156,6 @@ function preload () {
 
     swapRight = loadSound('assets/right.mp3');
     swapLeft = loadSound('assets/left.mp3');
-    emergencySound = loadSound('assets/emergency.mp3');
 
     oneLeft = loadSound('assets/1_Left.mp3');
     oneRight = loadSound('assets/1_Right.mp3');
@@ -180,6 +194,10 @@ function preload () {
 
     leftEarReactSounds = [twoLeft, fourLeft, sixLeft, eightLeft];
     rightEarReactSounds = [oneRight, threeRight, fiveRight, sevenRight, nineRight];
+
+    emergencyAlertFire = loadSound('assets/warning_fire.mp3');
+    emergencyAlertEngine = loadSound('assets/warning_engine.mp3');
+    emergencyAlertPropeller = loadSound('assets/warning_propeller.mp3');
 
 }
 
@@ -396,16 +414,23 @@ function settingsMenu () {
         targetSlider.position(sliderX, 230);
         targetSlider.size(sliderWidth);
 
-        timerSlider = createSlider(1, 300, timer);
-        timerSlider.position(sliderX, 330);
-        timerSlider.size(sliderWidth);
+        if(!doEmergency) {
+            timerSlider = createSlider(10, 300, timer);
+            timerSlider.position(sliderX, 330);
+            timerSlider.size(sliderWidth);
+        }
+        else {
+            timerSlider = createSlider(60, 300, timer);
+            timerSlider.position(sliderX, 330);
+            timerSlider.size(sliderWidth);
+        }
 
         audioSlider = createSlider(enums.FALSE, enums.TRUE, audioCues);
-        audioSlider.position(sliderX, 430);
+        audioSlider.position(sliderX, 445);
         audioSlider.size(sliderWidth);
 
         musicSlider = createSlider(0, 1, musicToggle);
-        musicSlider.position(sliderX, 530);
+        musicSlider.position(sliderX, 545);
         musicSlider.size(sliderWidth);
 
         haveInitSetting = 1;
@@ -414,8 +439,8 @@ function settingsMenu () {
         throtSlider.position(sliderX, 130);
         targetSlider.position(sliderX, 230);
         timerSlider.position(sliderX, 330);
-        audioSlider.position(sliderX, 430);
-        musicSlider.position(sliderX, 530);
+        audioSlider.position(sliderX, 445);
+        musicSlider.position(sliderX, 545);
     }
     timer = timerSlider.value();
     timeBuffer = timer;
@@ -428,6 +453,11 @@ function settingsMenu () {
     audioCues = audioSlider.value();
     musicToggle = musicSlider.value();
 
+    if(audioCues == enums.TRUE) {
+        doEmergency = enums.FALSE;
+        timerSlider.attribute('min', 10);
+    }
+
     fill('#e4ac00');
     textSize(18);
     textAlign(CENTER);
@@ -438,11 +468,11 @@ function settingsMenu () {
     text("Time:", windowWidth / 2 - 150, 345);
     text(timer + " seconds", windowWidth / 2 + 185, 345);
     //Cue training
-    text("Off", windowWidth / 2 - 150, 445);
-    text("On", windowWidth / 2 + 150, 445);
+    text("Off", windowWidth / 2 - 150, 460);
+    text("On", windowWidth / 2 + 150, 460);
     //Music
-    text("Off", windowWidth / 2 - 150, 545);
-    text("On", windowWidth / 2 + 150, 545);
+    text("Off", windowWidth / 2 - 150, 560);
+    text("On", windowWidth / 2 + 150, 560);
 
     textSize(25);
     textAlign(CENTER);
@@ -462,7 +492,16 @@ function settingsMenu () {
 
     text("Audio cue training", windowWidth / 2, 400);
 
-    text("Music", windowWidth / 2, 500);
+    textSize(17);
+    fill('#FF0000');
+    stroke("#000000");
+    text("Turning this on will disable emergency training", windowWidth / 2, 425);
+
+    stroke('#013993');
+    fill('#e4ac00');
+
+
+    text("Music", windowWidth / 2, 515);
 
     fill('#e4ac00');
     textSize(25);
@@ -515,6 +554,11 @@ function settingsMenu2 () {
         reactionTimeSlider.position(sliderX, 330);
         reactionTimeSlider.size(sliderWidth);
 
+        //Emergencies toggle
+        emergencySlider = createSlider(enums.FALSE, enums.TRUE, doEmergency, 1);
+        emergencySlider.position(sliderX, 445);
+        emergencySlider.size(sliderWidth);
+
         //Slider for toggling debug text on/off
         debugSlider = createSlider(enums.FALSE, enums.TRUE, debugToggle);
         debugSlider.position(65, 130);
@@ -526,12 +570,18 @@ function settingsMenu2 () {
         earSwapSlider.position(sliderX, 130);
         cueIntervalSlider.position(sliderX, 230);
         reactionTimeSlider.position(sliderX, 330);
+        emergencySlider.position(sliderX, 445);
     }
 
     earSwapInterval = earSwapSlider.value();
     debugToggle = debugSlider.value();
     cueInterval = cueIntervalSlider.value();
     reactionTime = reactionTimeSlider.value();
+    doEmergency = emergencySlider.value();
+
+    if(doEmergency == enums.TRUE) {
+        audioCues = enums.FALSE;
+    }
 
     fill('#e4ac00');
     textSize(18);
@@ -549,6 +599,10 @@ function settingsMenu2 () {
     text("Time:", windowWidth / 2 - 150, 345);
     text(reactionTime + " seconds", windowWidth / 2 + 185, 345);
 
+    //Emergencies
+    text("Off", windowWidth / 2 - 150, 460);
+    text("On", windowWidth / 2 + 185, 460);
+
     //Debug toggle
     text("Off", 45, 145);
     text("On", 290, 145);
@@ -565,6 +619,15 @@ function settingsMenu2 () {
 
     text("Cue reaction time", windowWidth / 2, 300);
 
+    text("Emergency Training", windowWidth / 2, 400);
+
+    textSize(17);
+    fill('#FF0000');
+    stroke("#000000");
+    text("Turning this on will disable audio cue training and limit game time to minimum 60 seconds", windowWidth / 2, 425);
+
+    stroke('#013993');
+    fill('#e4ac00');
     textSize(35);
     text("Toggle Debug Text", 165, 100);
 
@@ -580,6 +643,7 @@ function settingsMenu2 () {
         debugSlider.remove();
         cueIntervalSlider.remove();
         reactionTimeSlider.remove();
+        emergencySlider.remove();
         clear();
         menuOption = enums.menu.SETTINGS_1;
         haveInitSetting = 0;
@@ -589,14 +653,18 @@ function settingsMenu2 () {
 
 function keyReleased () {
     keyCode = DELETE;
+    currentInput = enums.input.NONE;
+
+
+    upPressed = false;
+    downPressed = false;
+
 }
 
 function keyPressed () {
     lastInput = key;
     currentInput = key;
-    setTimeout(() => {
-        currentInput = "NONE";
-    }, 1000);
+
 }
 
 
@@ -697,6 +765,9 @@ function runInterval (seconds, func) {
         func(0);
     }
 }
+//PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+//PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+//PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
 
 function playGame () {
     ingame = true;
@@ -736,8 +807,34 @@ function playGame () {
     }
 
 
+    //Emergency traning
+    if(doEmergency == enums.TRUE) {
+        let yPadding = 20;
+        let y = height - yPadding;
+        textAlign(LEFT);
+        textSize(40);
+        stroke('#013993');
+        fill('#e4ac00');
+        text(`Engine: ${engineValue}`, 20, y);
+        text(`Fuel: ${fuelValue}`, textWidth("Engine:100") + 70, y);
+
+        if(keyIsDown(UP_ARROW) && !upPressed) {
+            if(engineValue < 100) {
+                engineValue++;
+            }
+            upPressed = true;
+        }
+        if(keyIsDown(DOWN_ARROW) && !downPressed) {
+            if(engineValue > 0) {
+                engineValue--;
+            }
+            downPressed = true;
+        }
+
+    }
 
 
+    //audio training
     if(audioCues == enums.TRUE) {
 
         if(!announcedFirstEar) {
@@ -867,6 +964,8 @@ function playGame () {
     }
 
 
+
+
     if(sqrt(pow(x - squareX, 2) + (pow(y - squareY, 2))) <= 40) {
         image(greenTarget, squareX, squareY, 50, 50);
     }
@@ -914,11 +1013,17 @@ function playGame () {
         }
 
         //Cues
-        text(`Total Cues: ${totalCues}`, windowWidth - 25, 125);
-        text(`Hit Cues: ${hitCues}`, windowWidth - 25, 150);
-        text(`Missed Cues: ${missedCues}`, windowWidth - 25, 175);
-        text(`Reaction Timer: ${cueTimer}`, windowWidth - 25, 200);
-        text(`Cue Playing: ${isCuePlaying}`, windowWidth - 25, 225);
+        if(audioCues) {
+            text(`Total Cues: ${totalCues}`, windowWidth - 25, 125);
+            text(`Hit Cues: ${hitCues}`, windowWidth - 25, 150);
+            text(`Missed Cues: ${missedCues}`, windowWidth - 25, 175);
+            text(`Reaction Timer: ${cueTimer}`, windowWidth - 25, 200);
+            text(`Cue Playing: ${isCuePlaying}`, windowWidth - 25, 225);
+        }
+
+        if(doEmergency) {
+            text(`Emergency: ${isEmergency}`, windowWidth - 25, 125);
+        }
 
         fill('#e4ac00');
         textAlign(LEFT);
@@ -927,11 +1032,21 @@ function playGame () {
     textSize(25);
     text("Press Backspace to return", windowWidth - 370, windowHeight - 10);
     text(timer, windowWidth / 2, 30);
-    if(keyIsDown(UP_ARROW) || keyIsDown(87)) {
+
+    if(isEmergency == enums.TRUE) {
+        fill('#FF0000');
+        stroke("#000000");
+        text(emergencyResolutionTime, windowWidth / 2, 60);
+        stroke('#013993');
+        fill('#e4ac00');
+    }
+
+
+    if(keyIsDown(87)) {
         throtY -= 5;
     }
 
-    if(keyIsDown(DOWN_ARROW) || keyIsDown(83)) {
+    if(keyIsDown(83)) {
         throtY += 5;
     }
 
