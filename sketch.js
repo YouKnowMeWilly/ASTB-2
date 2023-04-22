@@ -1,3 +1,5 @@
+
+
 //enums object assigns names to values used throught the program for easier readability
 const enums = {
     //TRUE and FALSE enums are defined as 0 and 1
@@ -77,6 +79,8 @@ let needClick = 0;
 let firstStart = true;
 
 
+
+
 //Ear to play first cue in
 let cueEar = Math.round(Math.random());
 
@@ -115,7 +119,8 @@ let hitCues = 0;
 let missedCues = 0;
 let cueReactTimer = 0;
 
-let clearItems = [];
+let clearIntervals = [];
+let clearTimeouts = [];
 let stopSounds = [];
 
 
@@ -123,9 +128,20 @@ let doEmergency = enums.FALSE;
 let isEmergency = enums.FALSE;
 let displayEmergencyTimer = enums.TRUE;
 
-let emergencies = ["fire", "engine", "propeller"];
+let emergencyNames = ["fire", "engine", "propeller"];
+let orderSelected = false;
 
 let emergencyResolutionTime = 10;
+let emergencyTimer = 0;
+
+let emergencyWait = ((timer - 37.59) / 4).toFixed(2);
+
+let firstEmergencyCleared = false;
+let secondEmergencyCleared;
+let thirdEmergencyCleared;
+
+let emergencySuccess = 0;
+let emergencyFailure = 0;
 
 let engineValue = 50;
 let fuelValue = 100;
@@ -134,6 +150,8 @@ let canAdjustValues = enums.FALSE;
 
 let upPressed = false;
 let downPressed = false;
+
+let controller;
 
 
 function preload () {
@@ -195,11 +213,18 @@ function preload () {
     leftEarReactSounds = [twoLeft, fourLeft, sixLeft, eightLeft];
     rightEarReactSounds = [oneRight, threeRight, fiveRight, sevenRight, nineRight];
 
-    emergencyAlertFire = loadSound('assets/warning_fire.mp3');
-    emergencyAlertEngine = loadSound('assets/warning_engine.mp3');
-    emergencyAlertPropeller = loadSound('assets/warning_propeller.mp3');
+    alertFire = loadSound('assets/warning_fire.mp3');
+    alertEngine = loadSound('assets/warning_engine.mp3');
+    alertPropeller = loadSound('assets/warning_propeller.mp3');
+
+
+
+
 
 }
+
+
+
 
 function setup () {
     createCanvas(windowWidth, windowHeight);
@@ -215,9 +240,16 @@ function setup () {
     barY = windowHeight - 400;
     throtY = windowHeight - 150;
 
+
+    if(navigator.getGamepads().length > 0) {
+        controller = navigator.getGamepads()[0];
+        console.log(controller.id);
+    }
+
     if(!!navigator.getGamepads()) {
         console.log("KUUUURRRP");
         console.log(navigator.getGamepads());
+
     }
 }
 
@@ -226,6 +258,13 @@ function windowResized () {
 }
 
 function startMenu () {
+    orderSelected = false;
+    firstEmergencyCleared = false;
+    secondEmergencyCleared = false;
+    thirdEmergencyCleared = false;
+    isEmergency = enums.FALSE;
+    emergencySuccess = 0;
+    emergencyFailure = 0;
     totalCues = 0;
     hitCues = 0;
     missedCues = 0;
@@ -280,6 +319,37 @@ function startMenu () {
         menuSound.play();
     }
 
+
+    if(controller) {
+        let engineKnob = controller.axes[4];
+        let fuelKnob = controller.axes[3];
+        engineValue = Math.round((engineKnob - (-1)) * (100 - 0) / (1 - (-1)));
+        regularValue = Math.floor((fuelKnob - (-1)) * (26 - 0) / (0.99 - (-1)));
+
+        fuelValue = Math.floor((regularValue / 26) * 100);
+    }
+
+
+
+    if(doEmergency) {
+        let yPadding = 20;
+        let y1 = height - yPadding;
+
+        textAlign(LEFT);
+        textSize(40);
+        stroke('#013993');
+        fill('#e4ac00');
+        text(`Engine: ${engineValue}`, 20, y1);
+        text(`Fuel: ${fuelValue}`, textWidth("Engine:100") + 70, y1);
+
+
+
+
+
+
+
+    }
+
 }
 
 function mouseClicked () {
@@ -321,6 +391,11 @@ function mouseClicked () {
 
 function gameOver () {
     playTimeFrames = 0;
+    isEmergency = enums.FALSE;
+    firstEmergencyCleared = false;
+    secondEmergencyCleared = false;
+    thirdEmergencyCleared = false;
+    orderSelected = false;
     lastInput = 'NONE';
     announcedFirstEar = false;
     ingame = false;
@@ -334,6 +409,9 @@ function gameOver () {
     text("Press backspace to return to the menu", windowWidth / 2, windowHeight / 2 + 300);
     if(audioCues == enums.TRUE) {
         text("You got " + hitCues + "/" + totalCues + " cues correct", windowWidth / 2, windowHeight / 2 - 100);
+    }
+    if(doEmergency) {
+        text("You cleared " + emergencySuccess + "/" + "3" + " emergencies succesfully", windowWidth / 2, windowHeight / 2 - 100);
     }
     if(keyCode == BACKSPACE) {
         throtRunningAvg = 0;
@@ -443,6 +521,7 @@ function settingsMenu () {
         musicSlider.position(sliderX, 545);
     }
     timer = timerSlider.value();
+    emergencyWait = ((timer - 37.59) / 4).toFixed(2);
     timeBuffer = timer;
     vThrottleMax = throtSlider.value();
 
@@ -651,6 +730,22 @@ function settingsMenu2 () {
 
 }
 
+
+
+
+
+
+
+function shuffleArray (array) {
+    for(let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+
+
+
 function keyReleased () {
     keyCode = DELETE;
     currentInput = enums.input.NONE;
@@ -744,12 +839,21 @@ function randomSound (array) {
 }
 
 function clearAllIntervals () {
-    for(let intervalId in clearItems) {
-        clearInterval(clearItems[intervalId]);
+    for(let intervalId in clearIntervals) {
+        clearInterval(clearIntervals[intervalId]);
     }
 
-    clearItems = []; // Reset the global array to an empty array
+    clearIntervals = []; // Reset the global array to an empty array
 }
+
+function clearAllTimeouts () {
+    for(let timeoutId in clearTimeouts) {
+        clearTimeout(clearTimeouts[timeoutId]);
+    }
+
+    clearTimeouts = []; // Reset the global array to an empty array
+}
+
 function stopAllSounds () {
     for(let soundId in stopSounds) {
         stopSounds[soundId].stop();
@@ -769,6 +873,13 @@ function runInterval (seconds, func) {
 //PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
 //PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
 
+window.addEventListener('gamepadconnected', (event) => {
+    controller = event.gamepad;
+    console.log('Gamepad connected:', controller.id);
+
+});
+
+
 function playGame () {
     ingame = true;
     playTimeFrames++;
@@ -781,6 +892,7 @@ function playGame () {
         samples = 0;
         timer = timeBuffer;
         clearAllIntervals();
+        clearAllTimeouts();
         stopAllSounds();
         return;
     }
@@ -794,10 +906,11 @@ function playGame () {
     strokeWeight(3);
     stroke("#013993");
 
-
     if(keyCode == BACKSPACE) {
         keyCode = DELETE;
-
+        clearAllIntervals();
+        clearAllTimeouts();
+        stopAllSounds();
         clear();
         menuOption = enums.menu.START;
     }
@@ -807,8 +920,52 @@ function playGame () {
     }
 
 
+
+    if(controller) {
+        let engineKnob = controller.axes[4];
+        let fuelKnob = controller.axes[3];
+        engineValue = Math.round((engineKnob - (-1)) * (100 - 0) / (1 - (-1)));
+        regularValue = Math.floor((fuelKnob - (-1)) * (26 - 0) / (0.99 - (-1)));
+
+        fuelValue = Math.floor((regularValue / 26) * 100);
+    }
+
+
+
+
     //Emergency traning
     if(doEmergency == enums.TRUE) {
+        let emergencyOrder;
+        if(!orderSelected) {
+            emergencyOrder = shuffleArray(emergencyNames);
+            orderSelected = true;
+        }
+
+
+
+
+        let emergencies = {
+            fire: {
+                sound: alertFire,
+                engine: 0,
+                fuel: 0
+            },
+            engine: {
+                sound: alertEngine,
+                engine: 100,
+                fuel: 100
+            },
+            propeller: {
+                sound: alertPropeller,
+                engine: 0,
+                fuel: 100
+            }
+
+        };
+
+
+
+
         let yPadding = 20;
         let y = height - yPadding;
         textAlign(LEFT);
@@ -818,18 +975,105 @@ function playGame () {
         text(`Engine: ${engineValue}`, 20, y);
         text(`Fuel: ${fuelValue}`, textWidth("Engine:100") + 70, y);
 
-        if(keyIsDown(UP_ARROW) && !upPressed) {
-            if(engineValue < 100) {
-                engineValue++;
-            }
-            upPressed = true;
+
+        function playEmergency (emergencyObject) {
+            emergencyTimer = emergencyResolutionTime;
+            let warning = emergencyObject.sound;
+            warning.play();
+            stopSounds.push(warning);
+
+            let waitForSound = setTimeout(() => {
+                let start = startSound;
+                start.play();
+                stopSounds.push(start);
+                isEmergency = enums.TRUE;
+                let updateTimer = setInterval(() => {
+                    if(emergencyTimer > 0) {
+                        emergencyTimer--;
+                    }
+                }, 1000);
+                clearIntervals.push(updateTimer);
+
+                //If enter is clicked before the timer finished
+                let checkInput = setInterval(() => {
+                    if(currentInput == "Enter") {
+                        clearInterval(updateTimer);
+
+                        if(engineValue === emergencyObject.engine && fuelValue === emergencyObject.fuel) {
+                            emergencySuccess++;
+                            isEmergency = enums.FALSE;
+                            clearInterval(updateTimer);
+                            clearInterval(checkTimerEnd);
+                            clearInterval(checkInput);
+                            clearInterval(waitForSound);
+                        }
+                        else {
+                            emergencyFailure++;
+                            isEmergency = enums.FALSE;
+                            clearInterval(updateTimer);
+                            clearInterval(checkTimerEnd);
+                            clearInterval(checkInput);
+                            clearInterval(waitForSound);
+                        }
+                    }
+                }, 15);
+                clearIntervals.push(checkInput);
+
+                let checkTimerEnd = setInterval(() => {
+                    if(emergencyTimer == 0) {
+                        emergencyFailure++;
+                        isEmergency = enums.FALSE;
+                        clearInterval(updateTimer);
+                        clearInterval(checkTimerEnd);
+                        clearInterval(checkInput);
+                        clearInterval(waitForSound);
+                    }
+                }, 16);
+                clearIntervals.push(checkTimerEnd);
+
+            }, 2.53 * 1000);
+            clearTimeouts.push(waitForSound);
+
+
         }
-        if(keyIsDown(DOWN_ARROW) && !downPressed) {
-            if(engineValue > 0) {
-                engineValue--;
-            }
-            downPressed = true;
+
+        if(emergencyOrder) {
+            let firstEmergency = emergencies[emergencyOrder[0]];
+            let secondEmergency = emergencies[emergencyOrder[1]];
+            let thirdEmergency = emergencies[emergencyOrder[2]];
+
+            let first = setTimeout(() => {
+                if(!firstEmergencyCleared) {
+                    playEmergency(firstEmergency);
+                    firstEmergencyCleared = true;
+                }
+            }, emergencyWait * 1000);
+            clearTimeouts.push(first);
+
+            let second = setTimeout(() => {
+                if(!secondEmergencyCleared) {
+                    playEmergency(secondEmergency);
+                    secondEmergencyCleared = true;
+                }
+            }, ((emergencyWait * 2) + 2.53 + 10) * 1000);
+            clearTimeouts.push(second);
+
+            let third = setTimeout(() => {
+                if(!thirdEmergencyCleared) {
+                    playEmergency(thirdEmergency);
+                    thirdEmergencyCleared = true;
+                }
+            }, ((emergencyWait * 3) + (2.53 * 2) + (10 * 2)) * 1000);
+            clearTimeouts.push(third);
+
+
         }
+
+
+
+
+
+
 
     }
 
@@ -855,12 +1099,12 @@ function playGame () {
                         }
                     }, 100);
 
-                    clearItems.push(checkCuePlaying);
+                    clearIntervals.push(checkCuePlaying);
                 }
             }, 500);
         });
 
-        clearItems.push(earSwapTimer);
+        clearIntervals.push(earSwapTimer);
 
 
 
@@ -935,7 +1179,7 @@ function playGame () {
                     }
                 }, 16);
 
-                clearItems.push(cueTimerUpdater);
+                clearIntervals.push(cueTimerUpdater);
 
                 let checkCueDone = setInterval(() => {
                     if(millis() >= endTime) {
@@ -952,7 +1196,7 @@ function playGame () {
                     }
                 }, 16);
 
-                clearItems.push(checkCueDone);
+                clearIntervals.push(checkCueDone);
 
             };
 
@@ -1023,6 +1267,8 @@ function playGame () {
 
         if(doEmergency) {
             text(`Emergency: ${isEmergency}`, windowWidth - 25, 125);
+            text(`Successes: ${emergencySuccess}`, windowWidth - 25, 150);
+            text(`Failures: ${emergencyFailure}`, windowWidth - 25, 175);
         }
 
         fill('#e4ac00');
@@ -1036,7 +1282,7 @@ function playGame () {
     if(isEmergency == enums.TRUE) {
         fill('#FF0000');
         stroke("#000000");
-        text(emergencyResolutionTime, windowWidth / 2, 60);
+        text(emergencyTimer, windowWidth / 2, 60);
         stroke('#013993');
         fill('#e4ac00');
     }
