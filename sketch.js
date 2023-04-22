@@ -921,7 +921,7 @@ function playGame () {
 
 
 
-    if(controller) {
+    if(doEmergency) {
         let engineKnob = controller.axes[4];
         let fuelKnob = controller.axes[3];
         engineValue = Math.round((engineKnob - (-1)) * (100 - 0) / (1 - (-1)));
