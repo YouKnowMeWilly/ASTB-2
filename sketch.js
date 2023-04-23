@@ -1,4 +1,18 @@
+const gamepadAPI = {
+    controller: {},
+    turbo: false,
+    connect () { },
+    disconnect () { },
+    update () {
+        controller = navigator.getGamepads()[controller.index];
+    },
 
+    buttonPressed () { },
+    buttons: [],
+    buttonsCache: [],
+    buttonsStatus: [],
+    axesStatus: [],
+};
 
 //enums object assigns names to values used throught the program for easier readability
 const enums = {
@@ -228,7 +242,7 @@ function preload () {
 
 function setup () {
     createCanvas(windowWidth, windowHeight);
-    fullscreen(1);
+    //fullscreen(1);
     fancyFont = loadFont('assets/HighlandGothicFLF.ttf');
     textFont(fancyFont, 50);
     x = width / 2;
@@ -242,8 +256,10 @@ function setup () {
 
 
     if(navigator.getGamepads().length > 0) {
-        controller = navigator.getGamepads()[0];
-        console.log(controller.id);
+        controllers = navigator.getGamepads();
+        if(controller) {
+            console.log(controller.id);
+        }
     }
 
     if(!!navigator.getGamepads()) {
@@ -258,6 +274,7 @@ function windowResized () {
 }
 
 function startMenu () {
+    gamepadAPI.update();
     orderSelected = false;
     firstEmergencyCleared = false;
     secondEmergencyCleared = false;
@@ -880,6 +897,9 @@ window.addEventListener('gamepadconnected', (event) => {
 });
 
 
+
+
+
 function playGame () {
     ingame = true;
     playTimeFrames++;
@@ -919,6 +939,14 @@ function playGame () {
         menuSound.setVolume(0);
     }
 
+    gamepadAPI.update();
+
+    if(doEmergency) {
+
+
+    }
+
+    gamepadAPI.update();
 
 
     if(doEmergency) {
@@ -929,7 +957,6 @@ function playGame () {
 
         fuelValue = Math.floor((regularValue / 26) * 100);
     }
-
 
 
 
