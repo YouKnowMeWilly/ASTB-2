@@ -4,7 +4,9 @@ const gamepadAPI = {
     connect () { },
     disconnect () { },
     update () {
-        controller = navigator.getGamepads()[controller.index];
+        if(controller) {
+            controller = navigator.getGamepads()[controller.index];
+        }
     },
 
     buttonPressed () { },
@@ -960,7 +962,7 @@ function playGame () {
 
 
 
-    //Emergency traning
+    //Emergency training
     if(doEmergency == enums.TRUE) {
         let emergencyOrder;
         if(!orderSelected) {
@@ -1142,11 +1144,12 @@ function playGame () {
                 if(repeat) {
                     isCuePlaying = true;
                 }
-                let startTime = millis();
-                let endTime = startTime + (reactionTime * 1000);
-                isCuePlaying = true;
                 let rightCue = randomSound(rightEarSounds);
                 let leftCue = randomSound(leftEarSounds);
+
+                let startTime = millis();
+                let endTime = startTime + (reactionTime * 1000) + (max(rightCue.duration(), leftCue.duration()) * 1000);
+                isCuePlaying = true;
 
                 stopSounds.push(rightCue);
                 stopSounds.push(leftCue);
@@ -1177,7 +1180,7 @@ function playGame () {
 
 
                 let cueTimerMaxValue = 60; // Change this variable to set maximum cueTimer value
-                let increment = cueTimerMaxValue / (reactionTime * 1000); // Increment per millisecond
+                let increment = cueTimerMaxValue / ((reactionTime * 1000) + (max(rightCue.duration(), leftCue.duration()) * 1000)); // Increment per millisecond
                 cueTimer = cueTimerMaxValue; // Start cueTimer at maximum value
 
                 // Continuously update cueTimer based on elapsed time
